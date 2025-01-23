@@ -183,10 +183,10 @@
     </v-container>
     <audio
       ref="correctSound"
-      src="/src/assets/correct.mp3"
+      src="/sounds/correct.mp3"
       preload="auto"
     ></audio>
-    <audio ref="wrongSound" src="/src/assets/wrong.mp3" preload="auto"></audio>
+    <audio ref="wrongSound" src="/sounds/wrong.mp3" preload="auto"></audio>
   </v-container>
 </template>
 

@@ -101,7 +101,7 @@
       setTimeout(() => {
         synth = window.speechSynthesis
         voices.value = synth.getVoices()
-        voice.value = voices.value[1]
+        voice.value = voices.value[0]
         readWord.speak()
       })
     }

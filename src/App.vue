@@ -2,7 +2,6 @@
   import { getWordAndDefinition } from './functions/wordFetch.js'
   import { computed, onMounted, reactive, ref } from 'vue'
   import { useSpeechSynthesis } from '@vueuse/core'
-  import 'vue3-toastify/dist/index.css'
   import { toast } from 'vue3-toastify'
 
   const word = reactive({

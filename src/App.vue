@@ -3,7 +3,10 @@
   import { computed, onMounted, reactive, ref } from 'vue'
   import { useSpeechSynthesis } from '@vueuse/core'
   import { toast } from 'vue3-toastify'
+  import LevelDropdown from './components/LevelDropdown.vue'
+  import { useDifficultyStore } from '@/stores/difficulty';
 
+  const difficultyStore = useDifficultyStore()
   const word = reactive({
     word: '',
     definition: '',
@@ -34,11 +37,22 @@
 
   let synth
   const voices = ref([])
+  const wordIsVisible = ref(false)
 
   const getWord = async (difficulty) => {
     const newWord = await getWordAndDefinition(difficulty)
     word.word = newWord.word
     word.definition = newWord.definition
+  }
+
+  const changeWord = async (difficulty) => {
+    toggleWordVisibility()
+    await getWord(difficulty)
+    readWord.speak()
+  }
+
+  const toggleWordVisibility = () => {
+    wordIsVisible.value = !wordIsVisible.value
   }
 
   const play = (event) => {
@@ -49,13 +63,11 @@
   }
 
   const submitEntry = async () => {
-    console.log(spellingEntry.entry)
     if (spellingEntry.entry.toLowerCase() === word.word) {
+      toggleWordVisibility()
       spellingEntry.entry = ''
       notifyCorrect()
       playCorrectSound()
-      await getWord(1)
-      readWord.speak()
     } else {
       spellingEntry.entry = ''
       notifyWrong()
@@ -90,7 +102,7 @@
     }
   }
   onMounted(async () => {
-    const mountedWord = await getWordAndDefinition(1)
+    const mountedWord = await getWordAndDefinition(difficultyStore.selectedOption)
     word.word = mountedWord.word
     word.definition = mountedWord.definition
   })
@@ -108,6 +120,8 @@
 </script>
 
 <template>
+  <LevelDropdown />
+
   <v-container
     class="fill-height d-flex flex-column justify-center align-center"
   >
@@ -115,20 +129,32 @@
     <v-container>
       <v-row align="center" justify="center">
         <v-col cols="auto">
-          <v-avatar
-            id="word"
-            @click="play"
-            class="play-button"
-            size="90"
-            color="grey-darken-3"
-          >
-            <v-icon
+          <v-hover v-slot="{ isHovering, props }">
+            <v-avatar
               id="word"
-              icon="mdi-volume-high"
-              color="success"
-              size="x-large"
-            ></v-icon>
-          </v-avatar>
+              @click="play"
+              class="play-button elevation-5"
+              size="90"
+              :color="isHovering ? 'green' : 'grey-darken-3'"
+              v-bind="props"
+            >
+              <v-icon
+                id="word"
+                icon="mdi-volume-high"
+                :color="isHovering ? 'white' : 'success'"
+                size="x-large"
+              ></v-icon>
+            </v-avatar>
+          </v-hover>
+        </v-col>
+      </v-row>
+    </v-container>
+
+    <!-- hidden word -->
+    <v-container v-if="wordIsVisible">
+      <v-row align="center" justify="center">
+        <v-col cols="auto">
+          <v-text class="text-h3 word-revealed">{{ word.word }}</v-text>
         </v-col>
       </v-row>
     </v-container>
@@ -174,17 +200,18 @@
           </v-btn>
         </v-col>
         <v-col cols="auto">
-          <v-btn @click="getWord(1)" color="blue" class="mx-2">
+          <v-btn @click="changeWord(difficultyStore.selectedOption)" color="blue" class="mx-2">
             Get New Word
           </v-btn>
         </v-col>
+        <v-col cols="auto">
+          <v-btn @click="toggleWordVisibility()" color="red" class="mx-2"
+            >Reveal Word</v-btn
+          >
+        </v-col>
       </v-row>
     </v-container>
-    <audio
-      ref="correctSound"
-      src="/sounds/correct.mp3"
-      preload="auto"
-    ></audio>
+    <audio ref="correctSound" src="/sounds/correct.mp3" preload="auto"></audio>
     <audio ref="wrongSound" src="/sounds/wrong.mp3" preload="auto"></audio>
   </v-container>
 </template>
@@ -192,5 +219,8 @@
 <style scoped>
   .play-button {
     cursor: pointer;
+  }
+  .word-revealed {
+    text-transform: capitalize !important;
   }
 </style>

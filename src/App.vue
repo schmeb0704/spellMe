@@ -55,7 +55,7 @@
       spellingEntry.entry = ''
       notifyCorrect()
       playCorrectSound()
-      await getWord()
+      await getWord(1)
       readWord.speak()
     } else {
       spellingEntry.entry = ''
@@ -175,7 +175,7 @@
           </v-btn>
         </v-col>
         <v-col cols="auto">
-          <v-btn @click="getWord" color="blue" class="mx-2">
+          <v-btn @click="getWord(1)" color="blue" class="mx-2">
             Get New Word
           </v-btn>
         </v-col>

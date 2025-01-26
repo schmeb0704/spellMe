@@ -1,7 +1,14 @@
 import axios from 'axios'
 //https://spellmebackend.onrender.com/words/random?difficulty=3
 export const getRandomWord = async (difficulty) => {
-  const res = await axios.get(`https://spellmebackend.onrender.com/words/random?difficulty=${difficulty}`)
+  const res = await axios.get(
+    `https://spellmebackend.onrender.com/words/random?difficulty=${difficulty}`,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  )
   const data = res.data
   return data
 }
@@ -11,7 +18,7 @@ export const getDefinition = async (word) => {
 
   if (res.status === 200) {
     const data = res.data
-    
+
     const definition = data[0].defs[0].split('\t')[1]
     return definition
   }

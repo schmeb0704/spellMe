@@ -1,7 +1,7 @@
 import axios from 'axios'
-
-export const getRandomWord = async () => {
-  const res = await axios.get('https://random-word-api.vercel.app/api?words=1')
+//https://spellmebackend.onrender.com/words/random?difficulty=3
+export const getRandomWord = async (difficulty) => {
+  const res = await axios.get(`https://spellmebackend.onrender.com/words/random?difficulty=${difficulty}`)
   const data = res.data
   return data
 }

@@ -91,7 +91,7 @@
     }
   }
   onMounted(async () => {
-    const mountedWord = await getWordAndDefinition()
+    const mountedWord = await getWordAndDefinition(1)
     word.word = mountedWord.word
     word.definition = mountedWord.definition
   })

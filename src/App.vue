@@ -35,9 +35,8 @@
   let synth
   const voices = ref([])
 
-  const getWord = async () => {
-    const newWord = await getWordAndDefinition()
-    console.log(word)
+  const getWord = async (difficulty) => {
+    const newWord = await getWordAndDefinition(difficulty)
     word.word = newWord.word
     word.definition = newWord.definition
   }

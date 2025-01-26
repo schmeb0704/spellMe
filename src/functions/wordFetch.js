@@ -28,7 +28,8 @@ export const getDefinition = async (word) => {
 
 export const getWordAndDefinition = async (difficulty) => {
   const word = await getRandomWord(difficulty)
-  const definition = await getDefinition(word[0])
 
-  return { word: word[0], definition }
+  const definition = await getDefinition(word[0].word)
+
+  return { word: word[0].word, definition }
 }

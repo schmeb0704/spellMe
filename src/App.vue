@@ -63,7 +63,8 @@
   }
 
   const submitEntry = async () => {
-    if (spellingEntry.entry.toLowerCase() === word.word) {
+    const sanitizedText = spellingEntry.entry.toLowerCase().trim()
+    if (sanitizedText === word.word) {
       toggleWordVisibility()
       spellingEntry.entry = ''
       notifyCorrect()

@@ -75,10 +75,13 @@
   }
 
   const notifyCorrect = () => {
-    toast('Correct!', {
-      autoClose: 2000,
+    toast('Correct! Loading next word!', {
+      autoClose: 1200,
       theme: 'auto',
       type: 'success',
+      onClose: (()=>{
+        changeWord()
+      })
     })
   }
   const notifyWrong = () => {

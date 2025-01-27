@@ -12,9 +12,10 @@
     <v-select
       v-model="difficultyStore.selectedOption"
       :items="difficultyStore.options"
-      label="Select Difficulty"
+      label="Level"
       item-title="label"
       item-value="value"
+    style="font-size: x-large;"
     >
     </v-select>
   </v-container>

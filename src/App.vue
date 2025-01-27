@@ -79,9 +79,9 @@
       autoClose: 1200,
       theme: 'auto',
       type: 'success',
-      onClose: (()=>{
+      onClose: () => {
         changeWord()
-      })
+      },
     })
   }
   const notifyWrong = () => {
@@ -146,8 +146,7 @@
 
   watch(
     () => difficultyStore.selectedOption,
-    (newVal, oldVal) => {
-      console.log(`Global state changed from ${oldVal} to ${newVal}`)
+    () => {
       changeWord()
     }
   )
@@ -161,7 +160,11 @@
     </v-col>
 
     <!-- Main Content Area -->
-    <v-col cols="12" sm="9" class="d-flex flex-column justify-center align-center">
+    <v-col
+      cols="12"
+      sm="9"
+      class="d-flex flex-column justify-center align-center"
+    >
       <v-container>
         <!-- Play Button -->
         <v-row align="center" justify="center">
@@ -174,6 +177,13 @@
                 size="90"
                 :color="isHovering ? 'green' : 'grey-darken-3'"
                 v-bind="props"
+                style="transition: transform 0.3s, box-shadow 0.3s"
+                :style="{
+                  transform: isHovering ? 'scale(1.1)' : 'scale(1)',
+                  boxShadow: isHovering
+                    ? '0 0 15px 5px rgba(0, 255, 0, 0.5)'
+                    : 'none',
+                }"
               >
                 <v-icon
                   id="word"
@@ -184,6 +194,9 @@
               </v-avatar>
             </v-hover>
           </v-col>
+          <v-col cols="auto">
+    <v-text class="text-center" color="grey darken-2">Click to play the word</v-text>
+  </v-col>
         </v-row>
       </v-container>
 
@@ -201,7 +214,7 @@
         <v-row align="center" justify="center">
           <v-col cols="12" sm="8" md="6">
             <v-text-field
-              label="Spell here"
+              label="Type answer here"
               v-model="spellingEntry.entry"
               outlined
               @keyup.enter="submitEntry"
@@ -249,13 +262,16 @@
         </v-row>
       </v-container>
 
-      <audio ref="correctSound" src="/sounds/correct.mp3" preload="auto"></audio>
+      <audio
+        ref="correctSound"
+        src="/sounds/correct.mp3"
+        preload="auto"
+      ></audio>
       <audio ref="wrongSound" src="/sounds/wrong.mp3" preload="auto"></audio>
       <audio ref="wordToSpeak" :src="audioUrl" preload="auto"></audio>
     </v-col>
   </v-row>
 </template>
-
 
 <style scoped>
   .play-button {

@@ -1,11 +1,13 @@
 <script setup>
   import { getWordAndDefinition } from './functions/wordFetch.js'
-  import { computed, onMounted, reactive, ref } from 'vue'
+  import { computed, onMounted, reactive, ref, watch } from 'vue'
   import { useSpeechSynthesis } from '@vueuse/core'
   import { toast } from 'vue3-toastify'
   import LevelDropdown from './components/LevelDropdown.vue'
-  import { useDifficultyStore } from '@/stores/difficulty';
+  import { useDifficultyStore } from '@/stores/difficulty'
+  import axios from 'axios'
 
+  const audioUrl = ref(null)
   const difficultyStore = useDifficultyStore()
   const word = reactive({
     word: '',
@@ -17,49 +19,47 @@
   })
 
   const voice = ref()
-  const reactiveWord = computed(() => word.word)
   const reactiveDefinition = computed(() => word.definition)
-  const readingSpeed = ref(0.5)
   const definitionReadingSpeed = 1
-  const entry = computed(() => spellingEntry.entry)
   const correctSound = ref(null)
   const wrongSound = ref(null)
-
-  const readWord = useSpeechSynthesis(reactiveWord, {
-    voice,
-    rate: readingSpeed,
-  })
+  const wordToSpeak = ref(null)
+  const wordIsVisible = ref(false)
+  const buttonText = computed(() =>
+    wordIsVisible.value ? 'Hide Word' : 'Reveal Word'
+  )
 
   const readDefinition = useSpeechSynthesis(reactiveDefinition, {
     voice,
     rate: definitionReadingSpeed,
   })
 
-  let synth
-  const voices = ref([])
-  const wordIsVisible = ref(false)
-
-  const getWord = async (difficulty) => {
-    const newWord = await getWordAndDefinition(difficulty)
+  const getWord = async () => {
+    const newWord = await getWordAndDefinition(difficultyStore.selectedOption)
     word.word = newWord.word
     word.definition = newWord.definition
   }
 
-  const changeWord = async (difficulty) => {
-    toggleWordVisibility()
-    await getWord(difficulty)
-    readWord.speak()
+  const changeWord = async () => {
+    toggleWordVisibility(false)
+    spellingEntry.entry = ''
+    await getWord()
+    await googleSpeech()
+    playWord()
   }
 
-  const toggleWordVisibility = () => {
-    wordIsVisible.value = !wordIsVisible.value
+  const toggleWordVisibility = (state = !wordIsVisible.value) => {
+    wordIsVisible.value = state
   }
 
-  const play = (event) => {
-    const elementId = event.target.id
+  const playDefinition = (event) => {
+    readDefinition.speak()
+  }
 
-    const toPlay = elementId === 'word' ? readWord : readDefinition
-    toPlay.speak()
+  const playWord = () => {
+    if (wordToSpeak.value) {
+      wordToSpeak.value.play()
+    }
   }
 
   const submitEntry = async () => {
@@ -69,7 +69,6 @@
       notifyCorrect()
       playCorrectSound()
     } else {
-      spellingEntry.entry = ''
       notifyWrong()
       playWrongSound()
     }
@@ -92,129 +91,168 @@
 
   const playCorrectSound = () => {
     if (correctSound.value) {
-      correctSound.value.play() // Play the correct sound
+      correctSound.value.play()
     }
   }
 
   const playWrongSound = () => {
     if (wrongSound.value) {
-      wrongSound.value.play() // Play the correct sound
+      wrongSound.value.play()
     }
   }
+
+  const googleSpeech = async () => {
+    try {
+      const response = await axios.post(
+        `https://texttospeech.googleapis.com/v1/text:synthesize?key=${
+          import.meta.env.VITE_GOOGLE_CLOUD_KEY
+        }`,
+        {
+          input: { text: word.word },
+          voice: {
+            languageCode: 'en-US',
+            ssmlGender: 'MALE',
+            name: 'en-US-Standard-I',
+          },
+          audioConfig: { audioEncoding: 'MP3', speakingRate: 0.65 },
+        }
+      )
+      if (response.data.audioContent) {
+        // Decode base64 and create the Blob
+        const audioBlob = new Blob(
+          [
+            new Uint8Array(
+              atob(response.data.audioContent)
+                .split('')
+                .map((c) => c.charCodeAt(0))
+            ),
+          ],
+          { type: 'audio/mp3' }
+        )
+        audioUrl.value = URL.createObjectURL(audioBlob)
+      }
+    } catch (error) {
+      console.error('Error synthesizing speech:', error)
+    }
+  }
+
   onMounted(async () => {
-    const mountedWord = await getWordAndDefinition(difficultyStore.selectedOption)
-    word.word = mountedWord.word
-    word.definition = mountedWord.definition
+    await getWord()
+    await googleSpeech()
   })
 
-  onMounted(() => {
-    if (readWord.isSupported.value || reactiveDefinition.isSupported.value) {
-      setTimeout(() => {
-        synth = window.speechSynthesis
-        voices.value = synth.getVoices()
-        voice.value = voices.value[0]
-        readWord.speak()
-      })
+  watch(
+    () => difficultyStore.selectedOption,
+    (newVal, oldVal) => {
+      console.log(`Global state changed from ${oldVal} to ${newVal}`)
+      changeWord()
     }
-  })
+  )
 </script>
 
 <template>
-  <LevelDropdown />
+  <v-row class="fill-height">
+    <!-- Left Sidebar for Level Dropdown -->
+    <v-col cols="auto" class="d-flex flex-column align-start">
+      <LevelDropdown />
+    </v-col>
 
-  <v-container
-    class="fill-height d-flex flex-column justify-center align-center"
-  >
-    <!-- Play Button -->
-    <v-container>
-      <v-row align="center" justify="center">
-        <v-col cols="auto">
-          <v-hover v-slot="{ isHovering, props }">
-            <v-avatar
-              id="word"
-              @click="play"
-              class="play-button elevation-5"
-              size="90"
-              :color="isHovering ? 'green' : 'grey-darken-3'"
-              v-bind="props"
-            >
-              <v-icon
+    <!-- Main Content Area -->
+    <v-col cols="12" sm="9" class="d-flex flex-column justify-center align-center">
+      <v-container>
+        <!-- Play Button -->
+        <v-row align="center" justify="center">
+          <v-col cols="auto">
+            <v-hover v-slot="{ isHovering, props }">
+              <v-avatar
                 id="word"
+                @click="playWord"
+                class="play-button elevation-5"
+                size="90"
+                :color="isHovering ? 'green' : 'grey-darken-3'"
+                v-bind="props"
+              >
+                <v-icon
+                  id="word"
+                  icon="mdi-volume-high"
+                  :color="isHovering ? 'white' : 'success'"
+                  size="x-large"
+                ></v-icon>
+              </v-avatar>
+            </v-hover>
+          </v-col>
+        </v-row>
+      </v-container>
+
+      <!-- hidden word -->
+      <v-container v-if="wordIsVisible">
+        <v-row align="center" justify="center">
+          <v-col cols="auto">
+            <v-text class="text-h3 word-revealed">{{ word.word }}</v-text>
+          </v-col>
+        </v-row>
+      </v-container>
+
+      <!-- Text Field for Spelling -->
+      <v-container>
+        <v-row align="center" justify="center">
+          <v-col cols="12" sm="8" md="6">
+            <v-text-field
+              label="Spell here"
+              v-model="spellingEntry.entry"
+              outlined
+              @keyup.enter="submitEntry"
+            ></v-text-field>
+          </v-col>
+        </v-row>
+      </v-container>
+
+      <!-- Definition with Icon -->
+      <v-container>
+        <v-row align="center" justify="center">
+          <v-col cols="12" sm="8" md="6" mt="0">
+            <p class="pa-4 text-justify">
+              {{ word.definition }}
+              <v-icon
                 icon="mdi-volume-high"
-                :color="isHovering ? 'white' : 'success'"
-                size="x-large"
+                color="success"
+                id="definition"
+                @click="playDefinition"
+                class="ml-2"
               ></v-icon>
-            </v-avatar>
-          </v-hover>
-        </v-col>
-      </v-row>
-    </v-container>
+            </p>
+          </v-col>
+        </v-row>
+      </v-container>
 
-    <!-- hidden word -->
-    <v-container v-if="wordIsVisible">
-      <v-row align="center" justify="center">
-        <v-col cols="auto">
-          <v-text class="text-h3 word-revealed">{{ word.word }}</v-text>
-        </v-col>
-      </v-row>
-    </v-container>
+      <!-- Buttons -->
+      <v-container>
+        <v-row align="center" justify="center">
+          <v-col cols="auto">
+            <v-btn @click="submitEntry" color="green" class="mx-2">
+              Submit
+            </v-btn>
+          </v-col>
+          <v-col cols="auto">
+            <v-btn @click="changeWord" color="blue" class="mx-2">
+              Get New Word
+            </v-btn>
+          </v-col>
+          <v-col cols="auto">
+            <v-btn @click="toggleWordVisibility()" color="red" class="mx-2">
+              {{ buttonText }}
+            </v-btn>
+          </v-col>
+        </v-row>
+      </v-container>
 
-    <!-- Text Field for Spelling -->
-    <v-container>
-      <v-row align="center" justify="center">
-        <v-col cols="12" sm="8" md="6">
-          <v-text-field
-            label="Spell here"
-            v-model="spellingEntry.entry"
-            outlined
-            @keyup.enter="submitEntry"
-          ></v-text-field>
-        </v-col>
-      </v-row>
-    </v-container>
-
-    <!-- Definition with Icon -->
-    <v-container>
-      <v-row align="center" justify="center">
-        <v-col cols="12" sm="8" md="6">
-          <p class="pa-4 text-justify">
-            {{ word.definition }}
-            <v-icon
-              icon="mdi-volume-high"
-              color="success"
-              id="definition"
-              @click="play"
-              class="ml-2"
-            ></v-icon>
-          </p>
-        </v-col>
-      </v-row>
-    </v-container>
-
-    <!-- Buttons -->
-    <v-container>
-      <v-row align="center" justify="center">
-        <v-col cols="auto">
-          <v-btn @click="submitEntry" color="green" class="mx-2">
-            Submit
-          </v-btn>
-        </v-col>
-        <v-col cols="auto">
-          <v-btn @click="changeWord(difficultyStore.selectedOption)" color="blue" class="mx-2">
-            Get New Word
-          </v-btn>
-        </v-col>
-        <v-col cols="auto">
-          <v-btn @click="toggleWordVisibility()" color="red" class="mx-2"
-            >Reveal Word</v-btn
-          >
-        </v-col>
-      </v-row>
-    </v-container>
-    <audio ref="correctSound" src="/sounds/correct.mp3" preload="auto"></audio>
-    <audio ref="wrongSound" src="/sounds/wrong.mp3" preload="auto"></audio>
-  </v-container>
+      <audio ref="correctSound" src="/sounds/correct.mp3" preload="auto"></audio>
+      <audio ref="wrongSound" src="/sounds/wrong.mp3" preload="auto"></audio>
+      <audio ref="wordToSpeak" :src="audioUrl" preload="auto"></audio>
+    </v-col>
+  </v-row>
 </template>
+
 
 <style scoped>
   .play-button {
